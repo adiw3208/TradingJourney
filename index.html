@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0" />
+        <title>STUNTFX Trading Journal</title>
+
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap");
+            body {
+                font-family: "Plus Jakarta Sans", sans-serif;
+                background-color: #fcfcfc;
+                color: #1a1a1a;
+            }
+            .emerald-gradient {
+                background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+            }
+            .noir-card {
+                border: 1px solid #e5e7eb;
+                background: #ffffff;
+                transition: all 0.3s ease;
+            }
+            .noir-card:hover {
+                border-color: #10b981;
+            }
+            input[type="number"]::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+            }
+            .active-buy {
+                background-color: #10b981 !important;
+                color: white !important;
+                border-color: #065f46 !important;
+            }
+            .active-sell {
+                background-color: #1a1a1a !important;
+                color: white !important;
+                border-color: #000000 !important;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <nav
+            class="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-50">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold">
+                        S
+                    </div>
+                    <h1 class="text-xl font-bold tracking-tight">
+                        STUNTFX<span class="text-emerald-600">Journal.</span>
+                    </h1>
+                </div>
+                <div class="flex gap-4 items-center">
+                    <span
+                        id="liveClock"
+                        class="text-xs text-gray-400 font-mono"></span>
+                    <button
+                        onclick="exportPDF()"
+                        class="bg-black text-white text-xs font-semibold py-2 px-4 rounded-full hover:bg-gray-800 transition">
+                        Export Report
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mx-auto p-4 lg:p-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="noir-card p-6 rounded-2xl">
+                    <p
+                        class="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1">
+                        Portfolio Balance
+                    </p>
+                    <h3
+                        class="text-2xl font-bold"
+                        id="totalPnlDisplay">
+                        Rp 0
+                    </h3>
+                </div>
+                <div class="noir-card p-6 rounded-2xl">
+                    <p
+                        class="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1">
+                        Win Rate
+                    </p>
+                    <h3
+                        class="text-2xl font-bold text-emerald-600"
+                        id="winRateDisplay">
+                        0%
+                    </h3>
+                </div>
+                <div class="noir-card p-6 rounded-2xl">
+                    <p
+                        class="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1">
+                        Total Trades
+                    </p>
+                    <h3
+                        class="text-2xl font-bold"
+                        id="totalTradesDisplay">
+                        0
+                    </h3>
+                </div>
+                <div class="noir-card p-6 rounded-2xl">
+                    <p
+                        class="text-[10px] uppercase tracking-widest text-gray-400 font-bold mb-1">
+                        Profit Factor
+                    </p>
+                    <h3
+                        class="text-2xl font-bold"
+                        id="profitFactorDisplay">
+                        0.00
+                    </h3>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                <div class="xl:col-span-4 space-y-8">
+                    <div class="noir-card p-6 rounded-2xl h-64">
+                        <canvas id="equityChart"></canvas>
+                    </div>
+
+                    <div
+                        class="noir-card p-8 rounded-2xl border-t-4 border-emerald-600 shadow-sm">
+                        <h2
+                            id="formTitle"
+                            class="text-lg font-bold mb-6 flex items-center gap-2">
+                            <i
+                                class="fa-solid fa-plus-circle text-emerald-600"></i>
+                            New Entry
+                        </h2>
+
+                        <form
+                            id="tradeForm"
+                            onsubmit="handleFormSubmit(event)"
+                            class="space-y-4">
+                            <input
+                                type="hidden"
+                                id="editId" />
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label
+                                        class="text-[10px] font-bold text-gray-400 uppercase"
+                                        >Instrument</label
+                                    >
+                                    <select
+                                        id="pair"
+                                        onchange="calculatePnL()"
+                                        class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:border-emerald-500 outline-none">
+                                        <optgroup label="Forex Major">
+                                            <option value="EURUSD">
+                                                EUR/USD
+                                            </option>
+                                            <option value="GBPUSD">
+                                                GBP/USD
+                                            </option>
+                                            <option value="USDJPY">
+                                                USD/JPY
+                                            </option>
+                                            <option value="AUDUSD">
+                                                AUD/USD
+                                            </option>
+                                            <option value="USDCAD">
+                                                USD/CAD
+                                            </option>
+                                        </optgroup>
+                                        <optgroup label="Indices & Commodities">
+                                            <option
+                                                value="XAUUSD"
+                                                selected>
+                                                GOLD (XAUUSD)
+                                            </option>
+                                            <option value="NAS100">
+                                                NASDAQ 100
+                                            </option>
+                                            <option value="US30">
+                                                DOW JONES
+                                            </option>
+                                            <option value="SPX500">
+                                                S&P 500
+                                            </option>
+                                            <option value="WTI">
+                                                CRUDE OIL
+                                            </option>
+                                        </optgroup>
+                                        <optgroup label="Crypto Futures">
+                                            <option value="BTCUSD">
+                                                BITCOIN
+                                            </option>
+                                            <option value="ETHUSD">
+                                                ETHEREUM
+                                            </option>
+                                            <option value="SOLUSD">
+                                                SOLANA
+                                            </option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div class="space-y-1">
+                                    <label
+                                        class="text-[10px] font-bold text-gray-400 uppercase"
+                                        >Date</label
+                                    >
+                                    <input
+                                        type="date"
+                                        id="date"
+                                        required
+                                        class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:border-emerald-500 outline-none" />
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label
+                                    class="text-[10px] font-bold text-gray-400 uppercase"
+                                    >Position Side</label
+                                >
+                                <div
+                                    class="flex p-1 bg-gray-100 rounded-xl gap-1">
+                                    <button
+                                        type="button"
+                                        id="buyBtn"
+                                        onclick="setSide('Long')"
+                                        class="flex-1 py-2 rounded-lg text-xs font-bold transition-all active-buy">
+                                        BUY
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="sellBtn"
+                                        onclick="setSide('Short')"
+                                        class="flex-1 py-2 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400">
+                                        SELL
+                                    </button>
+                                    <input
+                                        type="hidden"
+                                        id="type"
+                                        value="Long" />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="space-y-1">
+                                    <label
+                                        class="text-[10px] font-bold text-gray-400 uppercase"
+                                        >Lot</label
+                                    >
+                                    <input
+                                        type="number"
+                                        id="lot"
+                                        step="0.01"
+                                        value="0.10"
+                                        oninput="calculatePnL()"
+                                        class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label
+                                        class="text-[10px] font-bold text-gray-400 uppercase"
+                                        >Entry</label
+                                    >
+                                    <input
+                                        type="number"
+                                        id="entry"
+                                        step="any"
+                                        oninput="calculatePnL()"
+                                        required
+                                        class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm" />
+                                </div>
+                                <div class="space-y-1">
+                                    <label
+                                        class="text-[10px] font-bold text-gray-400 uppercase"
+                                        >Exit</label
+                                    >
+                                    <input
+                                        type="number"
+                                        id="exit"
+                                        step="any"
+                                        oninput="calculatePnL()"
+                                        required
+                                        class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm" />
+                                </div>
+                            </div>
+
+                            <div
+                                class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
+                                <p
+                                    class="text-[10px] text-emerald-800 font-bold uppercase mb-1">
+                                    PnL Realization (IDR)
+                                </p>
+                                <h4
+                                    id="previewPnL"
+                                    class="text-2xl font-bold text-emerald-700 font-mono">
+                                    Rp 0
+                                </h4>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label
+                                    class="text-[10px] font-bold text-gray-400 uppercase"
+                                    >Trade Notes</label
+                                >
+                                <textarea
+                                    id="notes"
+                                    rows="2"
+                                    class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500"
+                                    placeholder="Why did you take this trade?"></textarea>
+                            </div>
+
+                            <button
+                                type="submit"
+                                id="submitBtn"
+                                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-200">
+                                Save Transaction
+                            </button>
+                            <button
+                                type="button"
+                                id="cancelBtn"
+                                onclick="resetForm()"
+                                class="w-full py-2 text-xs text-gray-400 hidden">
+                                Discard Changes
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="xl:col-span-8">
+                    <div class="noir-card rounded-2xl overflow-hidden">
+                        <div
+                            class="p-6 border-b border-gray-100 flex justify-between items-center">
+                            <h3 class="font-bold">Execution History</h3>
+                            <div class="flex gap-2">
+                                <input
+                                    type="text"
+                                    id="searchInput"
+                                    onkeyup="refreshUI()"
+                                    placeholder="Filter instrument..."
+                                    class="text-xs border border-gray-200 rounded-full px-4 py-2 outline-none focus:border-emerald-500" />
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead
+                                    class="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+                                    <tr>
+                                        <th class="px-6 py-4">Status</th>
+                                        <th class="px-6 py-4">Instrument</th>
+                                        <th class="px-6 py-4">Execution</th>
+                                        <th class="px-6 py-4 text-right">
+                                            Profit / Loss (IDR)
+                                        </th>
+                                        <th class="px-6 py-4 text-center">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    id="tableBody"
+                                    class="divide-y divide-gray-50"></tbody>
+                            </table>
+                        </div>
+                        <div
+                            id="noData"
+                            class="py-20 text-center hidden">
+                            <i
+                                class="fa-solid fa-wind text-gray-200 text-4xl mb-4"></i>
+                            <p class="text-gray-400 text-sm">
+                                No trades found in this journal.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const USD_IDR_RATE = 16000;
+            const MARKET_SPEC = {
+                XAUUSD: 100,
+                EURUSD: 100000,
+                GBPUSD: 100000,
+                USDJPY: 1000,
+                AUDUSD: 100000,
+                USDCAD: 100000,
+                NAS100: 1,
+                US30: 1,
+                SPX500: 1,
+                BTCUSD: 1,
+                ETHUSD: 1,
+                SOLUSD: 10,
+                WTI: 1000,
+            };
+
+            let trades =
+                JSON.parse(localStorage.getItem("ZenJournal_V4")) || [];
+            let equityChart;
+
+            // UI Logic
+            function setSide(side) {
+                document.getElementById("type").value = side;
+                const buyBtn = document.getElementById("buyBtn");
+                const sellBtn = document.getElementById("sellBtn");
+
+                if (side === "Long") {
+                    buyBtn.className =
+                        "flex-1 py-2 rounded-lg text-xs font-bold transition-all active-buy";
+                    sellBtn.className =
+                        "flex-1 py-2 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400";
+                } else {
+                    buyBtn.className =
+                        "flex-1 py-2 rounded-lg text-xs font-bold transition-all bg-transparent text-gray-400";
+                    sellBtn.className =
+                        "flex-1 py-2 rounded-lg text-xs font-bold transition-all active-sell";
+                }
+                calculatePnL();
+            }
+
+            function calculatePnL() {
+                const pair = document.getElementById("pair").value;
+                const type = document.getElementById("type").value;
+                const lot =
+                    parseFloat(document.getElementById("lot").value) || 0;
+                const entry =
+                    parseFloat(document.getElementById("entry").value) || 0;
+                const exit =
+                    parseFloat(document.getElementById("exit").value) || 0;
+
+                let diff = type === "Long" ? exit - entry : entry - exit;
+                let profitIDR =
+                    diff * (MARKET_SPEC[pair] || 1) * lot * USD_IDR_RATE;
+
+                const pnlLabel = document.getElementById("previewPnL");
+                pnlLabel.innerText = new Intl.NumberFormat("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                    maximumFractionDigits: 0,
+                }).format(profitIDR);
+                pnlLabel.className = `text-2xl font-bold font-mono ${profitIDR >= 0 ? "text-emerald-600" : "text-rose-600"}`;
+                return profitIDR;
+            }
+
+            function handleFormSubmit(e) {
+                e.preventDefault();
+                const pnl = calculatePnL();
+                const editId = document.getElementById("editId").value;
+
+                const tradeData = {
+                    id: editId ? parseInt(editId) : Date.now(),
+                    date: document.getElementById("date").value,
+                    pair: document.getElementById("pair").value,
+                    type: document.getElementById("type").value,
+                    lot: parseFloat(document.getElementById("lot").value),
+                    entry: parseFloat(document.getElementById("entry").value),
+                    exit: parseFloat(document.getElementById("exit").value),
+                    pnl: pnl,
+                    status: pnl > 1000 ? "Win" : pnl < -1000 ? "Loss" : "BE",
+                    notes: document.getElementById("notes").value,
+                };
+
+                if (editId) {
+                    const idx = trades.findIndex(
+                        (t) => t.id === parseInt(editId),
+                    );
+                    trades[idx] = tradeData;
+                } else {
+                    trades.unshift(tradeData);
+                }
+
+                localStorage.setItem("ZenJournal_V4", JSON.stringify(trades));
+                resetForm();
+                refreshUI();
+            }
+
+            function editTrade(id) {
+                const t = trades.find((t) => t.id === id);
+                document.getElementById("editId").value = t.id;
+                document.getElementById("date").value = t.date;
+                document.getElementById("pair").value = t.pair;
+                setSide(t.type);
+                document.getElementById("lot").value = t.lot;
+                document.getElementById("entry").value = t.entry;
+                document.getElementById("exit").value = t.exit;
+                document.getElementById("notes").value = t.notes;
+
+                document.getElementById("formTitle").innerHTML =
+                    `<i class="fa-solid fa-pen-to-square text-orange-500"></i> Edit Entry`;
+                document.getElementById("submitBtn").innerText =
+                    "Update Transaction";
+                document.getElementById("submitBtn").className =
+                    "w-full bg-black text-white font-bold py-4 rounded-xl transition-all shadow-lg";
+                document.getElementById("cancelBtn").classList.remove("hidden");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+
+            function deleteTrade(id) {
+                if (
+                    confirm("Archive this trade? This action cannot be undone.")
+                ) {
+                    trades = trades.filter((t) => t.id !== id);
+                    localStorage.setItem(
+                        "ZenJournal_V4",
+                        JSON.stringify(trades),
+                    );
+                    refreshUI();
+                }
+            }
+
+            function resetForm() {
+                document.getElementById("tradeForm").reset();
+                document.getElementById("editId").value = "";
+                document.getElementById("date").valueAsDate = new Date();
+                document.getElementById("formTitle").innerHTML =
+                    `<i class="fa-solid fa-plus-circle text-emerald-600"></i> New Entry`;
+                document.getElementById("submitBtn").innerText =
+                    "Save Transaction";
+                document.getElementById("submitBtn").className =
+                    "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200";
+                document.getElementById("cancelBtn").classList.add("hidden");
+                setSide("Long");
+                calculatePnL();
+            }
+
+            function refreshUI() {
+                const tbody = document.getElementById("tableBody");
+                const search = document
+                    .getElementById("searchInput")
+                    .value.toLowerCase();
+                tbody.innerHTML = "";
+
+                let totalNet = 0;
+                let winCount = 0;
+                let grossProfit = 0;
+                let grossLoss = 0;
+
+                const filteredTrades = trades.filter((t) =>
+                    t.pair.toLowerCase().includes(search),
+                );
+
+                if (filteredTrades.length === 0) {
+                    document
+                        .getElementById("noData")
+                        .classList.remove("hidden");
+                } else {
+                    document.getElementById("noData").classList.add("hidden");
+                }
+
+                filteredTrades.forEach((t) => {
+                    totalNet += t.pnl;
+                    if (t.pnl > 0) {
+                        winCount++;
+                        grossProfit += t.pnl;
+                    } else {
+                        grossLoss += Math.abs(t.pnl);
+                    }
+
+                    const statusColor =
+                        t.status === "Win"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : t.status === "Loss"
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-gray-100 text-gray-700";
+                    const sideColor =
+                        t.type === "Long"
+                            ? "text-emerald-500"
+                            : "text-gray-900";
+
+                    tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/50 transition">
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${statusColor}">${t.status}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-900">${t.pair}</div>
+                            <div class="text-[10px] font-bold ${sideColor} uppercase">${t.type} · ${t.lot} Lot</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-[10px] text-gray-400 uppercase">Prices</div>
+                            <div class="text-xs font-mono text-gray-600">${t.entry} → ${t.exit}</div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="font-bold font-mono ${t.pnl >= 0 ? "text-emerald-600" : "text-rose-600"}">${new Intl.NumberFormat("id-ID").format(t.pnl)}</div>
+                            <div class="text-[9px] text-gray-300">${t.date}</div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex justify-center gap-1">
+                                <button onclick="editTrade(${t.id})" class="w-8 h-8 rounded-full hover:bg-gray-200 transition text-gray-400 hover:text-black"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="deleteTrade(${t.id})" class="w-8 h-8 rounded-full hover:bg-rose-50 transition text-gray-300 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                });
+
+                document.getElementById("totalPnlDisplay").innerText =
+                    new Intl.NumberFormat("id-ID", {
+                        style: "currency",
+                        currency: "IDR",
+                        maximumFractionDigits: 0,
+                    }).format(totalNet);
+                document.getElementById("totalTradesDisplay").innerText =
+                    trades.length;
+                document.getElementById("winRateDisplay").innerText =
+                    trades.length > 0
+                        ? ((winCount / trades.length) * 100).toFixed(1) + "%"
+                        : "0%";
+                document.getElementById("profitFactorDisplay").innerText =
+                    grossLoss > 0
+                        ? (grossProfit / grossLoss).toFixed(2)
+                        : grossProfit.toFixed(2);
+                updateCharts();
+            }
+
+            function updateCharts() {
+                const sorted = [...trades].sort((a, b) => a.id - b.id);
+                let cum = 0;
+                const data = sorted.map((t) => {
+                    cum += t.pnl;
+                    return cum;
+                });
+
+                equityChart.data.labels = data.map((_, i) => i + 1);
+                equityChart.data.datasets[0].data = data;
+                equityChart.data.datasets[0].borderColor =
+                    cum >= 0 ? "#10b981" : "#f43f5e";
+                equityChart.data.datasets[0].backgroundColor =
+                    cum >= 0
+                        ? "rgba(16, 185, 129, 0.05)"
+                        : "rgba(244, 63, 94, 0.05)";
+                equityChart.update();
+            }
+
+            function initCharts() {
+                const ctx = document
+                    .getElementById("equityChart")
+                    .getContext("2d");
+                equityChart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: [],
+                        datasets: [
+                            {
+                                data: [],
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.3,
+                            },
+                        ],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: "EQUITY CURVE (NET)",
+                                font: { size: 10, weight: "bold" },
+                                color: "#9ca3af",
+                            },
+                        },
+                        scales: {
+                            y: { display: true, grid: { display: false } },
+                            x: { display: false },
+                        },
+                    },
+                });
+            }
+
+            function exportPDF() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                doc.setFont("helvetica", "bold");
+                doc.text("ZEN TRADING JOURNAL REPORT", 14, 20);
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.text(
+                    `Performance: ${document.getElementById("totalPnlDisplay").innerText} Net Profit | ${document.getElementById("winRateDisplay").innerText} Win Rate`,
+                    14,
+                    28,
+                );
+
+                const rows = trades.map((t) => [
+                    t.date,
+                    t.pair,
+                    t.type,
+                    t.lot,
+                    t.entry,
+                    t.exit,
+                    t.pnl.toLocaleString(),
+                    t.status,
+                ]);
+                doc.autoTable({
+                    startY: 35,
+                    head: [
+                        [
+                            "Date",
+                            "Pair",
+                            "Side",
+                            "Lot",
+                            "Entry",
+                            "Exit",
+                            "PnL (IDR)",
+                            "Status",
+                        ],
+                    ],
+                    body: rows,
+                    headStyles: { fillColor: [26, 26, 26] },
+                    styles: { fontSize: 8 },
+                });
+                doc.save("STUNTFX_Report.pdf");
+            }
+
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById("liveClock").innerText =
+                    now.toLocaleString("id-ID", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: false,
+                    }) + " WIB";
+            }, 1000);
+
+            window.onload = () => {
+                resetForm();
+                initCharts();
+                refreshUI();
+            };
+        </script>
+    </body>
+</html>
